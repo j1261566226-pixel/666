@@ -1,0 +1,7 @@
+{
+  "name": "Christmas WRQ",
+  "description": "An interactive 3D particle Christmas card with gesture control",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
