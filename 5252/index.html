@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>记忆结晶 · 专属你的粒子圣诞树</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: white;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI Overlay Styles */
+        .ui-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none; /* Let clicks pass through to canvas when possible */
+            transition: opacity 0.8s ease;
+        }
+
+        .ui-content {
+            pointer-events: auto;
+            text-align: center;
+            background: rgba(20, 20, 30, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 40px 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 85%;
+            width: 320px;
+            box-shadow: 0 0 40px rgba(0, 150, 255, 0.15);
+        }
+
+        h1 {
+            font-weight: 300;
+            font-size: 26px;
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            color: #fff;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #88cfff;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        p {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            border: none;
+            padding: 12px 30px;
+            color: white;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
+            display: inline-block;
+            margin: 10px 5px;
+            pointer-events: auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 114, 255, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(255,255,255,0.2); 
+            font-size: 14px;
+            padding: 10px 20px;
+            box-shadow: none;
+            width: auto;
+            display: inline-block;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.15); 
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        /* Music indicator (now just status, not upload) */
+        .music-status {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .music-status.active {
+            color: #00c6ff;
+            text-shadow: 0 0 5px rgba(0, 198, 255, 0.5);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* File Input Hidden */
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Loading Orb Animation */
+        .orb {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(0,198,255,0.4) 50%, rgba(0,0,0,0) 70%);
+            box-shadow: 0 0 40px rgba(0, 198, 255, 0.6);
+            animation: breathe 3s infinite ease-in-out;
+            margin-bottom: 20px;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 60px rgba(0, 198, 255, 0.8); }
+        }
+
+        /* Input Fields */
+        .text-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #00c6ff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Final Quote Display */
+        #quote-display {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            font-style: italic;
+            color: rgba(255,255,255,0.8);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2s;
+            z-index: 5;
+        }
+
+        /* Small thumbnail of original image */
+        #original-thumb {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.3);
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 1s;
+            z-index: 5;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #loading-text {
+            font-size: 12px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        /* Share Modal */
+        #share-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #share-img {
+            max-width: 85%;
+            max-height: 70%;
+            border: 2px solid white;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+        }
+
+        #share-tip {
+            color: white;
+            margin-top: 15px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 30px;
+            color: white;
+            cursor: pointer;
+            z-index: 101;
+        }
+        
+        /* Music Control Top Right */
+        #music-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: all 0.3s;
+        }
+        #music-control.playing {
+            border-color: #00c6ff;
+            box-shadow: 0 0 10px #00c6ff;
+            opacity: 1;
+            animation: rotate 3s linear infinite;
+        }
+        @keyframes rotate { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
+
+    </style>
+</head>
+<body>
+
+    <!-- Canvas for Particles -->
+    <div id="canvas-container"></div>
+    
+    <!-- Top Right Music Indicator -->
+    <div id="music-control" onclick="toggleMusic()" title="Music Control">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="white">
+            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+        </svg>
+    </div>
+
+    <!-- Phase 1: Loading / Intro -->
+    <div id="phase-loading" class="ui-layer">
+        <div class="orb"></div>
+        <div id="loading-text">Loading Energy Core...</div>
+    </div>
+
+    <!-- Phase 2: Input -->
+    <div id="phase-input" class="ui-layer hidden">
+        <div class="ui-content">
+            <h1>记忆注入</h1>
+            <div class="subtitle">Memory Crystallization</div>
+            
+            <div class="music-status active">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                背景音乐已就绪 (Jingle Bells)
+            </div>
+
+            <input type="text" id="user-wish" class="text-input" placeholder="输入一句圣诞祝福..." maxlength="20">
+            
+            <input type="file" id="file-input" accept="image/*">
+            <button class="btn" onclick="document.getElementById('file-input').click()">
+                <span style="margin-right:8px">📷</span> 上传照片生成
+            </button>
+            <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                * 您的照片将被转化为粒子色彩基因
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 3: Result Controls (Hidden initially) -->
+    <div id="phase-result" class="ui-layer hidden" style="pointer-events: none; justify-content: center; align-items: flex-end; padding-bottom: 50px;">
+        <div class="ui-content" style="pointer-events: auto; background: transparent; box-shadow: none; border: none; backdrop-filter: none; display: flex; gap: 15px;">
+             <!-- Controls -->
+             <button class="btn btn-secondary" onclick="location.reload()">重塑记忆</button>
+             <button class="btn" onclick="generatePoster()">生成海报</button>
+        </div>
+    </div>
+
+    <div id="quote-display"></div>
+    <img id="original-thumb" alt="Original Memory">
+
+    <!-- Share Modal -->
+    <div id="share-modal" class="hidden">
+        <div class="close-btn" onclick="closeShare()">×</div>
+        <img id="share-img" src="" alt="Share Poster">
+        <div id="share-tip">长按上方图片保存分享</div>
+    </div>
+    
+    <!-- Audio Element -->
+    <!-- 
+      注意：如果你在本地运行并希望使用你自己的 FLAC 文件：
+      1. 将你的文件 "John Williams - Jingle Bells.flac" 放在与此 HTML 相同的文件夹中。
+      2. 将下方的 src 修改为 src="./John Williams - Jingle Bells.flac"
+    -->
+    <audio id="bgm" src="/John Williams - Jingle Bells.mp3"></audio>
+
+    <script>
+        // --- Configuration & State ---
+        const config = {
+            particleCount: 2800, 
+            treeHeight: 500,
+            baseRadius: 200,
+            spinSpeed: 0.005,
+            particleSize: 2.5
+        };
+
+        let state = {
+            phase: 'loading', // loading, input, transforming, growing, grown
+            rotation: 0,
+            particles: [],
+            targetImageColors: [],
+            mouseX: 0,
+            mouseY: 0,
+            isDragging: false,
+            lastX: 0,
+            originalImage: null,
+            audioContext: null,
+            analyser: null,
+            dataArray: null,
+            audioSource: null,
+            musicPlaying: false,
+            audioLevel: 0 // For visual reactivity
+        };
+
+        // --- Canvas Setup ---
+        const container = document.getElementById('canvas-container');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        container.appendChild(canvas);
+
+        let width, height, centerX, centerY;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            centerX = width / 2;
+            centerY = height / 2 + 50; 
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- Audio System ---
+        const audioElement = document.getElementById('bgm');
+        
+        function initAudio() {
+            if (!state.audioContext) {
+                // Initialize Audio Context on first interaction
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                state.audioContext = new AudioContext();
+                state.analyser = state.audioContext.createAnalyser();
+                state.analyser.fftSize = 256; 
+                
+                // Connect audio element to analyser
+                state.source = state.audioContext.createMediaElementSource(audioElement);
+                state.source.connect(state.analyser);
+                state.analyser.connect(state.audioContext.destination);
+                state.dataArray = new Uint8Array(state.analyser.frequencyBinCount);
+            }
+            
+            // Resume context if suspended (browser policy)
+            if (state.audioContext.state === 'suspended') {
+                state.audioContext.resume();
+            }
+        }
+
+        function playMusic() {
+            initAudio();
+            // Try to play
+            const playPromise = audioElement.play();
+            if (playPromise !== undefined) {
+                playPromise.then(_ => {
+                    document.getElementById('music-control').classList.add('playing');
+                })
+                .catch(error => {
+                    console.log("Autoplay prevented by browser, waiting for interaction");
+                });
+            }
+        }
+
+        function toggleMusic() {
+            if (!state.audioContext) initAudio();
+            
+            if(audioElement.paused) {
+                audioElement.play();
+                document.getElementById('music-control').classList.add('playing');
+            } else {
+                audioElement.pause();
+                document.getElementById('music-control').classList.remove('playing');
+            }
+        }
+
+        function analyzeAudio() {
+            if (!state.analyser) return 0;
+            state.analyser.getByteFrequencyData(state.dataArray);
+            
+            let sum = 0;
+            const range = 20; // Bass range
+            for (let i = 0; i < range; i++) {
+                sum += state.dataArray[i];
+            }
+            return (sum / range) / 255;
+        }
+
+        // --- Particle Class ---
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = (Math.random() - 0.5) * width;
+                this.y = (Math.random() - 0.5) * height;
+                this.z = (Math.random() - 0.5) * 500;
+                
+                this.treeY = Math.random() * config.treeHeight - (config.treeHeight / 2); 
+                let progressDownTree = (this.treeY + config.treeHeight/2) / config.treeHeight; 
+                let currentRadius = config.baseRadius * progressDownTree;
+                
+                this.angle = Math.random() * Math.PI * 2 * 12; 
+                
+                this.treeX = Math.cos(this.angle) * currentRadius;
+                this.treeZ = Math.sin(this.angle) * currentRadius;
+                
+                this.baseColor = {r:255, g:255, b:255};
+                this.color = `rgba(255, 255, 255, 1)`;
+                this.size = Math.random() * config.particleSize + 0.5;
+                
+                this.progress = 0;
+                this.speed = Math.random() * 0.02 + 0.005;
+            }
+
+            setColor(r, g, b) {
+                this.baseColor = {r, g, b};
+            }
+
+            update(audioLevel) {
+                if (state.phase === 'transforming') {
+                    this.x += (0 - this.x) * 0.05;
+                    this.y += (0 - this.y) * 0.05;
+                    this.z += (0 - this.z) * 0.05;
+                    this.x += (Math.random() - 0.5) * 20;
+                    this.y += (Math.random() - 0.5) * 20;
+                    
+                } else if (state.phase === 'growing' || state.phase === 'grown') {
+                    this.progress += this.speed;
+                    if (this.progress > 1) this.progress = 1;
+
+                    let rot = state.rotation + (state.phase === 'growing' ? this.progress * 10 : 0);
+                    let cos = Math.cos(rot);
+                    let sin = Math.sin(rot);
+                    
+                    // Audio Reactivity: Pulse radius
+                    let beatExpansion = 1 + (audioLevel * 0.3);
+                    
+                    let rx = this.treeX * beatExpansion * cos - this.treeZ * beatExpansion * sin;
+                    let rz = this.treeX * beatExpansion * sin + this.treeZ * beatExpansion * cos;
+
+                    let targetX = rx;
+                    let targetY = this.treeY; 
+                    let targetZ = rz;
+
+                    let ease = state.phase === 'grown' ? 0.1 : this.progress;
+                    
+                    this.x += (targetX - this.x) * ease;
+                    this.y += (targetY - this.y) * ease;
+                    this.z += (targetZ - this.z) * ease;
+                }
+            }
+
+            draw(context = ctx, drawScale = 1, audioLevel = 0) {
+                let fov = 300;
+                let scale = fov / (fov + this.z + 400); 
+                
+                if (scale < 0) return; 
+
+                let px = this.x * scale + centerX * drawScale; 
+                let py = this.y * scale + centerY * drawScale;
+                
+                // Audio Reactivity: Size
+                let beatSize = 1 + (audioLevel * 0.5);
+                let pSize = this.size * scale * drawScale * beatSize;
+
+                context.beginPath();
+                context.arc(px, py, pSize, 0, Math.PI * 2);
+                
+                // Audio Reactivity: Brightness
+                let alpha = 0.6 + (audioLevel * 0.4);
+                if(alpha > 1) alpha = 1;
+                
+                context.fillStyle = `rgba(${this.baseColor.r}, ${this.baseColor.g}, ${this.baseColor.b}, ${alpha})`;
+                
+                if (this.z < 0 && drawScale === 1 && audioLevel > 0.3) {
+                    context.shadowBlur = 15 * scale * audioLevel;
+                    context.shadowColor = `rgba(${this.baseColor.r}, ${this.baseColor.g}, ${this.baseColor.b}, 0.8)`;
+                } else {
+                    context.shadowBlur = 0;
+                }
+                
+                context.fill();
+            }
+        }
+
+        // --- Logic Control ---
+
+        function init() {
+            for(let i=0; i<config.particleCount; i++) {
+                state.particles.push(new Particle());
+            }
+            animate();
+            
+            setTimeout(() => {
+                document.getElementById('phase-loading').classList.add('hidden');
+                document.getElementById('phase-input').classList.remove('hidden');
+                state.phase = 'input';
+            }, 2500);
+
+            // Global interaction listener to unlock audio on first touch anywhere
+            const unlockAudio = () => {
+                playMusic();
+                // Remove listener after first interaction
+                document.removeEventListener('click', unlockAudio);
+                document.removeEventListener('touchstart', unlockAudio);
+            };
+            document.addEventListener('click', unlockAudio);
+            document.addEventListener('touchstart', unlockAudio);
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Ensure music plays if it hasn't started yet
+            playMusic();
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    state.originalImage = img;
+                    processImageColors(img);
+                    const thumb = document.getElementById('original-thumb');
+                    thumb.src = img.src;
+                    document.getElementById('phase-input').classList.add('hidden');
+                    startTransformation();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function processImageColors(img) {
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            const size = Math.sqrt(config.particleCount);
+            tempCanvas.width = size;
+            tempCanvas.height = size;
+            tempCtx.drawImage(img, 0, 0, size, size);
+            const data = tempCtx.getImageData(0, 0, size, size).data;
+            for (let i = 0; i < state.particles.length; i++) {
+                const pIndex = Math.floor(i % (size * size)) * 4;
+                state.particles[i].setColor(data[pIndex], data[pIndex + 1], data[pIndex + 2]);
+            }
+        }
+
+        function startTransformation() {
+            state.phase = 'transforming';
+            setTimeout(() => {
+                state.phase = 'growing';
+                const wish = document.getElementById('user-wish').value || "Merry Christmas";
+                const quoteEl = document.getElementById('quote-display');
+                quoteEl.innerText = `“ ${wish} ”`;
+                quoteEl.style.opacity = 1;
+                document.getElementById('phase-result').classList.remove('hidden');
+            }, 1500);
+            setTimeout(() => {
+                state.phase = 'grown';
+                document.getElementById('original-thumb').style.opacity = 1;
+            }, 4500);
+        }
+
+        function generatePoster() {
+            const pCanvas = document.createElement('canvas');
+            const pCtx = pCanvas.getContext('2d');
+            const pW = 750; 
+            const pH = 1334; 
+            pCanvas.width = pW;
+            pCanvas.height = pH;
+
+            const grad = pCtx.createLinearGradient(0, 0, 0, pH);
+            grad.addColorStop(0, '#050505');
+            grad.addColorStop(1, '#1a1a2e');
+            pCtx.fillStyle = grad;
+            pCtx.fillRect(0, 0, pW, pH);
+
+            pCtx.fillStyle = 'rgba(255,255,255,0.5)';
+            for(let i=0; i<100; i++) {
+                pCtx.beginPath();
+                pCtx.arc(Math.random()*pW, Math.random()*pH, Math.random()*1.5, 0, Math.PI*2);
+                pCtx.fill();
+            }
+
+            let originalCenterX = centerX;
+            let originalCenterY = centerY;
+            centerX = pW / 2;
+            centerY = pH / 2 - 100; 
+
+            state.particles.sort((a, b) => b.z - a.z);
+            state.particles.forEach(p => {
+                p.draw(pCtx, 1, 0); 
+            });
+
+            centerX = originalCenterX;
+            centerY = originalCenterY;
+
+            pCtx.textAlign = 'center';
+            pCtx.fillStyle = '#ffffff';
+            pCtx.font = '300 40px "Noto Sans SC"';
+            pCtx.fillText("记忆结晶 · 圣诞树", pW/2, 120);
+
+            const wish = document.getElementById('user-wish').value || "Merry Christmas";
+            pCtx.font = 'italic 32px "Noto Sans SC"';
+            pCtx.fillStyle = 'rgba(255,255,255,0.9)';
+            pCtx.fillText(`“ ${wish} ”`, pW/2, pH - 250);
+
+            pCtx.font = '16px "Noto Sans SC"';
+            pCtx.fillStyle = 'rgba(255,255,255,0.5)';
+            const date = new Date().toLocaleDateString();
+            pCtx.fillText(`Created on ${date}`, pW/2, pH - 200);
+
+            if(state.originalImage) {
+                const thumbSize = 120;
+                const thumbX = pW/2 - thumbSize/2;
+                const thumbY = pH - 160;
+                pCtx.save();
+                pCtx.beginPath();
+                pCtx.arc(pW/2, thumbY + thumbSize/2, thumbSize/2, 0, Math.PI*2);
+                pCtx.closePath();
+                pCtx.clip();
+                pCtx.drawImage(state.originalImage, thumbX, thumbY, thumbSize, thumbSize);
+                pCtx.restore();
+                pCtx.beginPath();
+                pCtx.arc(pW/2, thumbY + thumbSize/2, thumbSize/2, 0, Math.PI*2);
+                pCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+                pCtx.lineWidth = 3;
+                pCtx.stroke();
+            }
+
+            const dataUrl = pCanvas.toDataURL('image/png');
+            const shareImg = document.getElementById('share-img');
+            shareImg.src = dataUrl;
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function closeShare() {
+            document.getElementById('share-modal').classList.add('hidden');
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.4)'; 
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.globalCompositeOperation = 'lighter';
+
+            if (state.phase === 'grown' && !state.isDragging) {
+                state.rotation += config.spinSpeed;
+            }
+
+            state.audioLevel = analyzeAudio(); 
+
+            state.particles.sort((a, b) => b.z - a.z);
+            state.particles.forEach(p => {
+                p.update(state.audioLevel);
+                p.draw(ctx, 1, state.audioLevel);
+            });
+            
+            ctx.globalCompositeOperation = 'source-over';
+            requestAnimationFrame(animate);
+        }
+
+        document.getElementById('file-input').addEventListener('change', handleImageUpload);
+        
+        document.addEventListener('mousedown', e => {
+            if(e.target.closest('#share-modal') || e.target.closest('.ui-content') || e.target.closest('#music-control')) return;
+            state.isDragging = true;
+            state.lastX = e.clientX;
+        });
+        document.addEventListener('touchstart', e => {
+            if(e.target.closest('#share-modal') || e.target.closest('.ui-content') || e.target.closest('#music-control')) return;
+            state.isDragging = true;
+            state.lastX = e.touches[0].clientX;
+        });
+        document.addEventListener('mousemove', e => {
+            if (!state.isDragging) return;
+            state.rotation += (e.clientX - state.lastX) * 0.01;
+            state.lastX = e.clientX;
+        });
+        document.addEventListener('touchmove', e => {
+            if (!state.isDragging) return;
+            state.rotation += (e.touches[0].clientX - state.lastX) * 0.01;
+            state.lastX = e.touches[0].clientX;
+        });
+        document.addEventListener('mouseup', () => state.isDragging = false);
+        document.addEventListener('touchend', () => state.isDragging = false);
+
+        init();
+    </script>
+</body>
+</html>
